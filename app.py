@@ -300,7 +300,7 @@ col_input, col_cat = st.columns([3, 1.2])
 with col_input:
     ingredients_input = st.text_input(
         "What ingredients are in your kitchen?",
-        value="eggs, potatoes, onion",
+        value="",
         placeholder="e.g. eggs, potatoes, tomatoes, rice, chicken",
     )
 with col_cat:
