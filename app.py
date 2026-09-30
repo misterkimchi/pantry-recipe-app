@@ -8,7 +8,6 @@ import streamlit as st
 
 st.set_page_config(page_title="The Food at Home", layout="wide")
 
-# Centered compact logo and title header
 if os.path.exists("logo.png"):
     col_l, col_center, col_r = st.columns([2.5, 1, 2.5])
     with col_center:
@@ -90,99 +89,6 @@ FALLBACK_SUBSTITUTIONS = {
     "bread": "tortillas, pita, English muffins, or cooked grains",
     "eggplant": "zucchini, yellow squash, or portobello mushroom caps",
 }
-
-LOCAL_PANTRY_CORPUS = [
-    {
-        "title": "Classic Egg Fried Rice",
-        "category": "Savory Meals Only",
-        "cuisine": "Asian",
-        "ingredients": ["rice", "eggs", "soy sauce", "vegetable oil", "onion", "garlic"],
-        "instructions": "Heat oil in a skillet over high heat. Sauté diced onions and minced garlic. Push to the side, scramble eggs, fold in chilled cooked rice, and season with soy sauce.",
-        "image": "https://www.themealdb.com/images/media/meals/1529446352.jpg",
-        "source": "https://en.wikipedia.org/wiki/Fried_rice",
-    },
-    {
-        "title": "Spaghetti Aglio e Olio",
-        "category": "Savory Meals Only",
-        "cuisine": "Italian",
-        "ingredients": ["pasta", "garlic", "olive oil", "black pepper", "parmesan"],
-        "instructions": "Boil pasta in salted water. Gently sizzle sliced garlic in generous olive oil until golden. Toss pasta with the infused oil, a ladle of pasta cooking water, pepper, and cheese.",
-        "image": "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
-        "source": "https://en.wikipedia.org/wiki/Spaghetti_aglio_e_olio",
-    },
-    {
-        "title": "Country Potato and Onion Hash",
-        "category": "Breakfast",
-        "cuisine": "American",
-        "ingredients": ["potatoes", "onion", "butter", "black pepper", "salt"],
-        "instructions": "Dice potatoes small. Melt butter in a wide skillet, add potatoes and chopped onions, cover for 5 minutes, then crisp uncovered until golden brown on all sides.",
-        "image": "https://www.themealdb.com/images/media/meals/1550441882.jpg",
-        "source": "https://en.wikipedia.org/wiki/Hash_(food)",
-    },
-    {
-        "title": "Skillet Tomato and Egg Shakshuka",
-        "category": "Breakfast",
-        "cuisine": "Middle Eastern",
-        "ingredients": ["eggs", "canned tomatoes", "onion", "garlic", "olive oil", "salt"],
-        "instructions": "Sauté chopped onions and garlic in olive oil. Pour in crushed tomatoes, season with salt and pepper, and simmer. Create small wells, crack eggs directly in, and cover until whites set.",
-        "image": "https://www.themealdb.com/images/media/meals/g373701551450225.jpg",
-        "source": "https://en.wikipedia.org/wiki/Shakshouka",
-    },
-    {
-        "title": "Staple Lentil and Tomato Stew",
-        "category": "Savory Meals Only",
-        "cuisine": "Mediterranean",
-        "ingredients": ["lentils", "canned tomatoes", "onion", "garlic", "olive oil", "carrots"],
-        "instructions": "Sauté onions, garlic, and diced carrots in olive oil. Add dry lentils, canned tomatoes, and water or broth. Simmer covered for 30 minutes until lentils are tender.",
-        "image": "https://www.themealdb.com/images/media/meals/58oia91564916529.jpg",
-        "source": "https://en.wikipedia.org/wiki/Lentil_soup",
-    },
-    {
-        "title": "Crispy Stovetop Frittata",
-        "category": "Breakfast",
-        "cuisine": "European",
-        "ingredients": ["eggs", "potatoes", "cheese", "butter", "black pepper", "salt"],
-        "instructions": "Thinly slice potatoes and soften in butter. Beat eggs with salt, pepper, and shredded cheese. Pour eggs over potatoes and cook on low heat until firm and golden.",
-        "image": "https://www.themealdb.com/images/media/meals/quuxsx1511476154.jpg",
-        "source": "https://en.wikipedia.org/wiki/Frittata",
-    },
-    {
-        "title": "Simple Black Bean and Rice Bowl",
-        "category": "Savory Meals Only",
-        "cuisine": "Latin American",
-        "ingredients": ["rice", "black beans", "onion", "garlic", "olive oil", "salt"],
-        "instructions": "Warm drained black beans with sautéed garlic and onion. Serve hot over cooked white rice, finishing with olive oil and salt.",
-        "image": "https://www.themealdb.com/images/media/meals/1529444830.jpg",
-        "source": "https://en.wikipedia.org/wiki/Gallo_pinto",
-    },
-    {
-        "title": "Toasted Tuna and Cheddar Melt",
-        "category": "Savory Meals Only",
-        "cuisine": "American",
-        "ingredients": ["tuna", "bread", "cheddar", "butter", "black pepper"],
-        "instructions": "Flake drained tuna and season with pepper. Layer onto sliced bread with cheddar cheese. Butter the exterior and toast on both sides in a skillet until cheese is melted.",
-        "image": "https://www.themealdb.com/images/media/meals/1548772327.jpg",
-        "source": "https://en.wikipedia.org/wiki/Melt_sandwich",
-    },
-    {
-        "title": "Garlic Butter Skillet Chicken",
-        "category": "Savory Meals Only",
-        "cuisine": "American",
-        "ingredients": ["chicken", "garlic", "butter", "salt", "black pepper", "olive oil"],
-        "instructions": "Sear seasoned chicken in olive oil until golden. Lower heat, toss in minced garlic and generous butter, spooning melted garlic butter continuously over chicken until fully cooked.",
-        "image": "https://www.themealdb.com/images/media/meals/020z181619788503.jpg",
-        "source": "https://en.themealdb.com",
-    },
-    {
-        "title": "Quick Creamy Tomato Pasta",
-        "category": "Savory Meals Only",
-        "cuisine": "Italian",
-        "ingredients": ["pasta", "canned tomatoes", "heavy cream", "garlic", "parmesan", "olive oil"],
-        "instructions": "Cook pasta until al dente. Simmer garlic and crushed tomatoes in olive oil, stir in heavy cream to form a pink sauce, and toss pasta with parmesan.",
-        "image": "https://www.themealdb.com/images/media/meals/wxywrq1468235067.jpg",
-        "source": "https://en.wikipedia.org/wiki/Pasta",
-    }
-]
 
 
 def normalize_token(text):
@@ -266,7 +172,7 @@ def get_substitute_notes(missing_list):
 def fetch_single_meal(mid):
     detail_url = f"https://www.themealdb.com/api/json/v1/1/lookup.php?i={mid}"
     try:
-        res = requests.get(detail_url, timeout=4)
+        res = requests.get(detail_url, timeout=5)
         if res.status_code == 200:
             data = res.json()
             if data and data.get("meals"):
@@ -292,53 +198,17 @@ def match_recipe_ingredients(recipe_ingredients, pantry_items):
     return used, missed
 
 
-def evaluate_all_sources(pantry_items, meal_filter="Savory Meals Only"):
+def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
     pantry_cleaned = [p.strip() for p in pantry_items if p.strip()]
     if not pantry_cleaned:
         return pd.DataFrame()
-
-    results = []
-    seen_titles = set()
-
-    for item in LOCAL_PANTRY_CORPUS:
-        cat = item["category"]
-        if meal_filter == "Savory Meals Only" and cat == "Desserts / Baking":
-            continue
-        if meal_filter == "Breakfast" and cat != "Breakfast":
-            continue
-        if meal_filter == "Desserts / Baking" and cat != "Desserts / Baking":
-            continue
-
-        used, missed = match_recipe_ingredients(item["ingredients"], pantry_cleaned)
-        if not used:
-            continue
-
-        total = len(used) + len(missed)
-        pct = (len(used) / total) * 100 if total > 0 else 0
-        cost = estimate_missing_cost(missed)
-
-        seen_titles.add(item["title"].lower())
-        results.append(
-            {
-                "title": item["title"],
-                "cuisine": item["cuisine"],
-                "category": cat,
-                "image": item["image"],
-                "recipe_link": item["source"],
-                "used": used,
-                "missed": missed,
-                "missed_count": len(missed),
-                "match_pct": round(pct, 1),
-                "est_cost": cost,
-            }
-        )
 
     candidate_meals = {}
     for ing in pantry_cleaned:
         clean = normalize_token(ing).split()[0] if normalize_token(ing) else ing.lower()
         url = f"https://www.themealdb.com/api/json/v1/1/filter.php?i={clean}"
         try:
-            r = requests.get(url, timeout=4)
+            r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 data = r.json()
                 if data and data.get("meals"):
@@ -349,62 +219,68 @@ def evaluate_all_sources(pantry_items, meal_filter="Savory Meals Only"):
         except Exception:
             continue
 
-    if candidate_meals:
-        meal_ids = list(candidate_meals.keys())
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            api_meals = list(executor.map(fetch_single_meal, meal_ids))
+    if not candidate_meals:
+        return pd.DataFrame()
 
-        for meal in api_meals:
-            if not meal:
-                continue
+    meal_ids = list(candidate_meals.keys())
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        api_meals = list(executor.map(fetch_single_meal, meal_ids))
 
-            title = meal.get("strMeal", "")
-            if title.lower() in seen_titles:
-                continue
+    results = []
+    seen_titles = set()
 
-            category = meal.get("strCategory", "Main")
-            if meal_filter == "Savory Meals Only" and category.lower() == "dessert":
-                continue
-            elif meal_filter == "Breakfast" and category.lower() != "breakfast":
-                continue
-            elif meal_filter == "Desserts / Baking" and category.lower() != "dessert":
-                continue
+    for meal in api_meals:
+        if not meal:
+            continue
 
-            recipe_ings = []
-            for i in range(1, 21):
-                val = meal.get(f"strIngredient{i}")
-                if val and val.strip():
-                    recipe_ings.append(val.strip())
+        title = meal.get("strMeal", "")
+        if title.lower() in seen_titles:
+            continue
 
-            used, missed = match_recipe_ingredients(recipe_ings, pantry_cleaned)
-            if not used:
-                continue
+        category = meal.get("strCategory", "Main")
+        if meal_filter == "Savory Meals Only" and category.lower() == "dessert":
+            continue
+        elif meal_filter == "Breakfast" and category.lower() != "breakfast":
+            continue
+        elif meal_filter == "Desserts / Baking" and category.lower() != "dessert":
+            continue
 
-            total = len(used) + len(missed)
-            pct = (len(used) / total) * 100 if total > 0 else 0
-            cost = estimate_missing_cost(missed)
+        recipe_ings = []
+        for i in range(1, 21):
+            val = meal.get(f"strIngredient{i}")
+            if val and val.strip():
+                recipe_ings.append(val.strip())
 
-            link = (
-                meal.get("strYoutube")
-                or meal.get("strSource")
-                or f"https://www.themealdb.com/meal/{meal['idMeal']}"
-            )
+        used, missed = match_recipe_ingredients(recipe_ings, pantry_cleaned)
+        if not used:
+            continue
 
-            seen_titles.add(title.lower())
-            results.append(
-                {
-                    "title": title,
-                    "cuisine": meal.get("strArea", "International"),
-                    "category": category,
-                    "image": meal.get("strMealThumb", ""),
-                    "recipe_link": link,
-                    "used": used,
-                    "missed": missed,
-                    "missed_count": len(missed),
-                    "match_pct": round(pct, 1),
-                    "est_cost": cost,
-                }
-            )
+        total = len(used) + len(missed)
+        pct = (len(used) / total) * 100 if total > 0 else 0
+        cost = estimate_missing_cost(missed)
+
+        link = (
+            meal.get("strYoutube")
+            or meal.get("strSource")
+            or f"https://www.themealdb.com/meal/{meal['idMeal']}"
+        )
+
+        seen_titles.add(title.lower())
+        results.append(
+            {
+                "title": title,
+                "cuisine": meal.get("strArea", "International"),
+                "category": category,
+                "image": meal.get("strMealThumb", ""),
+                "recipe_link": link,
+                "instructions": meal.get("strInstructions", "Instructions available on site/video."),
+                "used": used,
+                "missed": missed,
+                "missed_count": len(missed),
+                "match_pct": round(pct, 1),
+                "est_cost": cost,
+            }
+        )
 
     if not results:
         return pd.DataFrame()
@@ -440,8 +316,8 @@ if st.button("Find Recipes", type="primary"):
     if not pantry_list:
         st.warning("Please specify at least one ingredient.")
     else:
-        with st.spinner("Searching kitchen staples across catalog..."):
-            df = evaluate_all_sources(pantry_list, meal_filter=selected_meal_type)
+        with st.spinner("Searching pantry recipes across culinary catalog..."):
+            df = evaluate_themealdb(pantry_list, meal_filter=selected_meal_type)
             st.session_state.search_results = df
             st.session_state.page_number = 1
 
@@ -455,7 +331,7 @@ if st.session_state.search_results is not None:
         st.info("No matching recipes found for those ingredients. Try basic staples like rice, chicken, or eggs.")
     else:
         total_pages = max(1, math.ceil(total_count / PAGE_SIZE))
-        
+
         if st.session_state.page_number > total_pages:
             st.session_state.page_number = total_pages
         if st.session_state.page_number < 1:
@@ -505,11 +381,17 @@ if st.session_state.search_results is not None:
                     missed_str = ", ".join(meal["missed"]) if meal["missed"] else "None"
                     st.write(f"**Missing items:** {missed_str}")
 
-                    with st.expander("Substitution Guidance and Instructions"):
+                    with st.expander("Substitution Guidance and Cooking Instructions"):
                         subs = get_substitute_notes(meal["missed"])
+                        st.write("**Substitutions:**")
                         for s in subs:
                             st.write(s)
-                        st.link_button("Open Instructions and Video", meal["recipe_link"])
+                        
+                        st.write("---")
+                        st.write("**Cooking Steps:**")
+                        st.write(meal["instructions"])
+                        
+                        st.link_button("Watch Video Walkthrough", meal["recipe_link"])
 
         st.write("---")
         _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns([2, 0.6, 1.4, 0.6, 2])
