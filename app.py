@@ -8,7 +8,7 @@ import streamlit as st
 st.set_page_config(page_title="The Food at Home", layout="wide")
 
 if os.path.exists("logo.png"):
-    col_l, col_center, col_r = st.columns([2,2,2])
+    col_l, col_center, col_r = st.columns([2,1.75,2])
     with col_center:
         st.image("logo.png", width=750)
 
