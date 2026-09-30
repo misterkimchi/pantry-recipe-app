@@ -1,44 +1,200 @@
+from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import requests
 import streamlit as st
 
-st.set_page_config(page_title="Pantry Chef: Recipe Matcher", layout="wide")
+st.set_page_config(page_title="Pantry Chef: Budget Recipe Matcher", layout="wide")
 
 st.title("Pantry Chef")
 st.caption(
-    "Turn available kitchen ingredients into meals. Ranked by pantry overlap with practical culinary substitutions."
+    "Turn kitchen ingredients into dinner. Ranked by fewest missing items, practical grocery cost estimates, and culinary substitutions."
 )
 
-with st.sidebar:
-    st.subheader("Preferences")
-    max_recipes = st.slider(
-        "Candidate recipes to evaluate", min_value=3, max_value=8, value=5
-    )
-    st.markdown("---")
-    st.caption(
-        "Open Access: Powered by TheMealDB culinary catalog. No API tokens or daily search limits required."
-    )
+# Benchmark grocery estimates for missing staples (USD)
+GROCERY_COST_ESTIMATES = {
+    "onion": 0.75,
+    "onions": 0.75,
+    "garlic": 0.50,
+    "butter": 1.25,
+    "milk": 1.00,
+    "heavy cream": 2.20,
+    "egg": 0.50,
+    "eggs": 0.50,
+    "flour": 0.40,
+    "sugar": 0.40,
+    "brown sugar": 0.50,
+    "tomato": 0.85,
+    "tomatoes": 0.85,
+    "canned tomatoes": 1.10,
+    "tomato paste": 0.90,
+    "tomato sauce": 1.10,
+    "soy sauce": 0.75,
+    "parmesan": 2.50,
+    "cheddar": 2.00,
+    "cheese": 2.00,
+    "mozzarella": 2.25,
+    "rice": 0.60,
+    "pasta": 1.10,
+    "noodles": 1.00,
+    "beef": 4.50,
+    "ground beef": 4.50,
+    "chicken": 3.50,
+    "chicken breast": 3.50,
+    "bread": 1.50,
+    "potatoes": 1.00,
+    "potato": 0.60,
+    "oil": 0.50,
+    "olive oil": 0.75,
+    "vegetable oil": 0.50,
+    "salt": 0.10,
+    "pepper": 0.15,
+    "black pepper": 0.15,
+    "beans": 1.00,
+    "black beans": 1.00,
+    "chickpeas": 1.00,
+    "lentils": 1.00,
+    "tuna": 1.25,
+    "canned tuna": 1.25,
+    "bell pepper": 1.00,
+    "carrot": 0.50,
+    "carrots": 0.50,
+    "spinach": 1.50,
+}
 
 FALLBACK_SUBSTITUTIONS = {
-    "onion": "shallots, scallions, or leeks",
-    "garlic": "garlic powder, minced shallots, or chives",
+    "onion": "shallots, scallions, leeks, or onion powder",
+    "garlic": "garlic powder, minced jarred garlic, or shallots",
     "butter": "olive oil, ghee, or neutral vegetable oil",
-    "milk": "oat milk, almond milk, or equal parts yogurt and water",
-    "heavy cream": "whole milk whisked with melted butter, or coconut milk",
+    "milk": "oat milk, almond milk, soy milk, or water with melted butter",
+    "heavy cream": "whole milk whisked with melted butter, or coconut cream",
     "egg": "ground flaxseed with water (1 tbsp : 3 tbsp), or applesauce",
     "flour": "cornstarch (use half amount), arrowroot, or oat flour",
-    "sugar": "honey, maple syrup, or agave nectar",
+    "sugar": "honey, maple syrup, brown sugar, or agave",
     "tomato": "canned crushed tomatoes, tomato paste loosened with water, or passata",
-    "soy sauce": "tamari, coconut aminos, or Worcestershire sauce",
+    "tomato paste": "canned tomato sauce simmered down, or crushed tomatoes",
+    "soy sauce": "tamari, coconut aminos, or Worcestershire sauce with a pinch of salt",
     "parmesan": "pecorino romano, grana padano, or nutritional yeast",
-    "rice": "quinoa, farro, or couscous",
-    "beef": "ground turkey, firm lentils, mushrooms, or pork",
-    "chicken": "turkey tenderloin, firm tofu, or canned chickpeas",
-    "cheese": "mozzarella, provolone, or white cheddar",
+    "cheddar": "colby, gouda, or monterey jack",
+    "mozzarella": "provolone, Monterey jack, or white cheddar",
+    "rice": "quinoa, farro, couscous, or riced cauliflower",
+    "pasta": "rice noodles, soba noodles, or zucchini ribbons",
+    "beef": "ground turkey, firm brown lentils, portobello mushrooms, or pork",
+    "chicken": "turkey cutlets, firm pressed tofu, or cooked chickpeas",
+    "black beans": "pinto beans, kidney beans, or lentils",
+    "bread": "tortillas, pita, English muffins, or cooked grains",
 }
+
+# Embedded Curated Open Pantry Corpus (Zero network latency, always available)
+LOCAL_PANTRY_CORPUS = [
+    {
+        "title": "Classic Egg Fried Rice",
+        "category": "Savory Meals Only",
+        "cuisine": "Asian",
+        "ingredients": ["rice", "eggs", "soy sauce", "vegetable oil", "onion", "garlic"],
+        "instructions": "Heat oil in a skillet over high heat. Sauté diced onions and minced garlic. Push to the side, scramble eggs, fold in chilled cooked rice, and season with soy sauce.",
+        "image": "https://www.themealdb.com/images/media/meals/1529446352.jpg",
+        "source": "https://en.wikipedia.org/wiki/Fried_rice",
+    },
+    {
+        "title": "Spaghetti Aglio e Olio",
+        "category": "Savory Meals Only",
+        "cuisine": "Italian",
+        "ingredients": ["pasta", "garlic", "olive oil", "black pepper", "parmesan"],
+        "instructions": "Boil pasta in salted water. Gently sizzle sliced garlic in generous olive oil until golden. Toss pasta with the infused oil, a ladle of pasta cooking water, pepper, and cheese.",
+        "image": "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
+        "source": "https://en.wikipedia.org/wiki/Spaghetti_aglio_e_olio",
+    },
+    {
+        "title": "Country Potato and Onion Hash",
+        "category": "Breakfast",
+        "cuisine": "American",
+        "ingredients": ["potatoes", "onion", "butter", "black pepper", "salt"],
+        "instructions": "Dice potatoes small. Melt butter in a wide skillet, add potatoes and chopped onions, cover for 5 minutes, then crisp uncovered until golden brown on all sides.",
+        "image": "https://www.themealdb.com/images/media/meals/1550441882.jpg",
+        "source": "https://en.wikipedia.org/wiki/Hash_(food)",
+    },
+    {
+        "title": "Skillet Tomato and Egg Shakshuka",
+        "category": "Breakfast",
+        "cuisine": "Middle Eastern",
+        "ingredients": ["eggs", "canned tomatoes", "onion", "garlic", "olive oil", "salt"],
+        "instructions": "Sauté chopped onions and garlic in olive oil. Pour in crushed tomatoes, season with salt and pepper, and simmer. Create small wells, crack eggs directly in, and cover until whites set.",
+        "image": "https://www.themealdb.com/images/media/meals/g373701551450225.jpg",
+        "source": "https://en.wikipedia.org/wiki/Shakshouka",
+    },
+    {
+        "title": "Staple Lentil and Tomato Stew",
+        "category": "Savory Meals Only",
+        "cuisine": "Mediterranean",
+        "ingredients": ["lentils", "canned tomatoes", "onion", "garlic", "olive oil", "carrots"],
+        "instructions": "Sauté onions, garlic, and diced carrots in olive oil. Add dry lentils, canned tomatoes, and water or broth. Simmer covered for 30 minutes until lentils are tender.",
+        "image": "https://www.themealdb.com/images/media/meals/58oia91564916529.jpg",
+        "source": "https://en.wikipedia.org/wiki/Lentil_soup",
+    },
+    {
+        "title": "Crispy Stovetop Frittata",
+        "category": "Breakfast",
+        "cuisine": "European",
+        "ingredients": ["eggs", "potatoes", "cheese", "butter", "black pepper", "salt"],
+        "instructions": "Thinly slice potatoes and soften in butter. Beat eggs with salt, pepper, and shredded cheese. Pour eggs over potatoes and cook on low heat until firm and golden.",
+        "image": "https://www.themealdb.com/images/media/meals/quuxsx1511476154.jpg",
+        "source": "https://en.wikipedia.org/wiki/Frittata",
+    },
+    {
+        "title": "Simple Black Bean and Rice Bowl",
+        "category": "Savory Meals Only",
+        "cuisine": "Latin American",
+        "ingredients": ["rice", "black beans", "onion", "garlic", "olive oil", "salt"],
+        "instructions": "Warm drained black beans with sautéed garlic and onion. Serve hot over cooked white rice, finishing with olive oil and salt.",
+        "image": "https://www.themealdb.com/images/media/meals/1529444830.jpg",
+        "source": "https://en.wikipedia.org/wiki/Gallo_pinto",
+    },
+    {
+        "title": "Toasted Tuna and Cheddar Melt",
+        "category": "Savory Meals Only",
+        "cuisine": "American",
+        "ingredients": ["tuna", "bread", "cheddar", "butter", "black pepper"],
+        "instructions": "Flake drained tuna and season with pepper. Layer onto sliced bread with cheddar cheese. Butter the exterior and toast on both sides in a skillet until cheese is melted.",
+        "image": "https://www.themealdb.com/images/media/meals/1548772327.jpg",
+        "source": "https://en.wikipedia.org/wiki/Melt_sandwich",
+    },
+    {
+        "title": "Garlic Butter Skillet Chicken",
+        "category": "Savory Meals Only",
+        "cuisine": "American",
+        "ingredients": ["chicken", "garlic", "butter", "salt", "black pepper", "olive oil"],
+        "instructions": "Sear seasoned chicken in olive oil until golden. Lower heat, toss in minced garlic and generous butter, spooning melted garlic butter continuously over chicken until fully cooked.",
+        "image": "https://www.themealdb.com/images/media/meals/020z181619788503.jpg",
+        "source": "https://www.themealdb.com",
+    },
+    {
+        "title": "Quick Creamy Tomato Pasta",
+        "category": "Savory Meals Only",
+        "cuisine": "Italian",
+        "ingredients": ["pasta", "canned tomatoes", "heavy cream", "garlic", "parmesan", "olive oil"],
+        "instructions": "Cook pasta until al dente. Simmer garlic and crushed tomatoes in olive oil, stir in heavy cream to form a pink sauce, and toss pasta with parmesan.",
+        "image": "https://www.themealdb.com/images/media/meals/wxywrq1468235067.jpg",
+        "source": "https://en.wikipedia.org/wiki/Pasta",
+    }
+]
+
+
+def estimate_missing_cost(missing_items):
+    """Calculates approximate grocery expense to purchase missing ingredients."""
+    total_cost = 0.0
+    for item in missing_items:
+        clean = item.lower().strip()
+        matched_price = None
+        for staple, price in GROCERY_COST_ESTIMATES.items():
+            if staple in clean or clean in staple:
+                matched_price = price
+                break
+        total_cost += matched_price if matched_price is not None else 1.25
+    return round(total_cost, 2)
 
 
 def get_substitute_notes(missing_list):
+    """Provides practical pantry swaps."""
     if not missing_list:
         return ["You have all necessary ingredients on hand."]
 
@@ -47,169 +203,246 @@ def get_substitute_notes(missing_list):
         item_lower = item.lower().strip()
         found = None
         for k, v in FALLBACK_SUBSTITUTIONS.items():
-            if k in item_lower:
+            if k in item_lower or item_lower in k:
                 found = v
                 break
 
         if found:
             notes.append(f"**{item.title()}**: Swap with {found}.")
         else:
-            notes.append(
-                f"**{item.title()}**: Optional or pick up on next grocery run."
-            )
+            notes.append(f"**{item.title()}**: Omit if unavailable or pick up at the store.")
     return notes
 
 
-def search_meals(pantry_items, limit=5):
-    candidates = {}
+def fetch_single_meal(mid):
+    """Fetches details for a single MealDB recipe ID."""
+    detail_url = f"https://www.themealdb.com/api/json/v1/1/lookup.php?i={mid}"
+    try:
+        res = requests.get(detail_url, timeout=4)
+        if res.status_code == 200:
+            data = res.json()
+            if data and data.get("meals"):
+                return data["meals"][0]
+    except Exception:
+        pass
+    return None
 
-    for item in pantry_items:
-        clean = item.strip().replace(" ", "_")
+
+def match_recipe_ingredients(recipe_ingredients, pantry_set):
+    """Splits recipe ingredients into used vs missing."""
+    used = []
+    missed = []
+    for r_ing in recipe_ingredients:
+        r_lower = r_ing.lower().strip()
+        # Direct substring match in either direction
+        if any(p in r_lower or r_lower in p for p in pantry_set):
+            used.append(r_ing)
+        else:
+            missed.append(r_ing)
+    return used, missed
+
+
+def evaluate_all_sources(pantry_items, meal_filter="Savory Meals Only"):
+    """Queries TheMealDB live and merges with the embedded open pantry corpus."""
+    pantry_set = {p.lower().strip() for p in pantry_items if p.strip()}
+    if not pantry_set:
+        return pd.DataFrame()
+
+    results = []
+    seen_titles = set()
+
+    # 1. Search Embedded Open Pantry Corpus
+    for item in LOCAL_PANTRY_CORPUS:
+        cat = item["category"]
+        if meal_filter == "Savory Meals Only" and cat == "Desserts / Baking":
+            continue
+        if meal_filter == "Breakfast" and cat != "Breakfast":
+            continue
+        if meal_filter == "Desserts / Baking" and cat != "Desserts / Baking":
+            continue
+
+        used, missed = match_recipe_ingredients(item["ingredients"], pantry_set)
+        if not used:
+            continue
+
+        total = len(used) + len(missed)
+        pct = (len(used) / total) * 100 if total > 0 else 0
+        cost = estimate_missing_cost(missed)
+
+        seen_titles.add(item["title"].lower())
+        results.append(
+            {
+                "title": item["title"],
+                "cuisine": item["cuisine"],
+                "category": cat,
+                "image": item["image"],
+                "recipe_link": item["source"],
+                "used": used,
+                "missed": missed,
+                "missed_count": len(missed),
+                "match_pct": round(pct, 1),
+                "est_cost": cost,
+            }
+        )
+
+    # 2. Search TheMealDB Live API in Parallel
+    candidate_meals = {}
+    for ing in pantry_set:
+        clean = ing.replace(" ", "_")
         url = f"https://www.themealdb.com/api/json/v1/1/filter.php?i={clean}"
         try:
-            r = requests.get(url, timeout=5)
+            r = requests.get(url, timeout=4)
             if r.status_code == 200:
                 data = r.json()
                 if data and data.get("meals"):
                     for m in data["meals"]:
                         mid = m["idMeal"]
-                        if mid not in candidates:
-                            candidates[mid] = {
-                                "id": mid,
-                                "title": m["strMeal"],
-                                "thumb": m["strMealThumb"],
-                            }
+                        if mid not in candidate_meals:
+                            candidate_meals[mid] = m["strMeal"]
         except Exception:
             continue
 
-    if not candidates:
-        return pd.DataFrame()
+    if candidate_meals:
+        meal_ids = list(candidate_meals.keys())
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            api_meals = list(executor.map(fetch_single_meal, meal_ids))
 
-    results = []
-    pantry_set = {p.lower().strip() for p in pantry_items}
-
-    for mid in list(candidates.keys())[:limit]:
-        detail_url = f"https://www.themealdb.com/api/json/v1/1/lookup.php?i={mid}"
-        try:
-            res = requests.get(detail_url, timeout=5)
-            if res.status_code != 200:
+        for meal in api_meals:
+            if not meal:
                 continue
-            meal = res.json()["meals"][0]
-        except Exception:
-            continue
 
-        ingredients = []
-        for i in range(1, 21):
-            val = meal.get(f"strIngredient{i}")
-            if val and val.strip():
-                ingredients.append(val.strip())
+            title = meal.get("strMeal", "")
+            if title.lower() in seen_titles:
+                continue
 
-        used = []
-        missed = []
-        for ing in ingredients:
-            ing_lower = ing.lower()
-            if any(p in ing_lower or ing_lower in p for p in pantry_set):
-                used.append(ing)
-            else:
-                missed.append(ing)
+            category = meal.get("strCategory", "Main")
+            if meal_filter == "Savory Meals Only" and category.lower() == "dessert":
+                continue
+            elif meal_filter == "Breakfast" and category.lower() != "breakfast":
+                continue
+            elif meal_filter == "Desserts / Baking" and category.lower() != "dessert":
+                continue
 
-        total = len(used) + len(missed)
-        pct = (len(used) / total) * 100 if total > 0 else 0
+            # Extract ingredients
+            recipe_ings = []
+            for i in range(1, 21):
+                val = meal.get(f"strIngredient{i}")
+                if val and val.strip():
+                    recipe_ings.append(val.strip())
 
-        link = (
-            meal.get("strYoutube")
-            or meal.get("strSource")
-            or f"https://www.themealdb.com/meal/{mid}"
-        )
+            used, missed = match_recipe_ingredients(recipe_ings, pantry_set)
+            if not used:
+                continue
 
-        results.append(
-            {
-                "id": mid,
-                "title": meal["strMeal"],
-                "cuisine": meal.get("strArea", "General"),
-                "category": meal.get("strCategory", "Main"),
-                "image": meal["strMealThumb"],
-                "recipe_link": link,
-                "used": used,
-                "missed": missed,
-                "missed_count": len(missed),
-                "match_pct": round(pct, 1),
-            }
-        )
+            total = len(used) + len(missed)
+            pct = (len(used) / total) * 100 if total > 0 else 0
+            cost = estimate_missing_cost(missed)
+
+            link = (
+                meal.get("strYoutube")
+                or meal.get("strSource")
+                or f"https://www.themealdb.com/meal/{meal['idMeal']}"
+            )
+
+            seen_titles.add(title.lower())
+            results.append(
+                {
+                    "title": title,
+                    "cuisine": meal.get("strArea", "International"),
+                    "category": category,
+                    "image": meal.get("strMealThumb", ""),
+                    "recipe_link": link,
+                    "used": used,
+                    "missed": missed,
+                    "missed_count": len(missed),
+                    "match_pct": round(pct, 1),
+                    "est_cost": cost,
+                }
+            )
 
     if not results:
         return pd.DataFrame()
 
     df = pd.DataFrame(results)
+    # Strictly sort: lowest missing ingredients first, lowest cost second, highest match pct third
     return df.sort_values(
-        by=["missed_count", "match_pct"], ascending=[True, False]
+        by=["missed_count", "est_cost", "match_pct"],
+        ascending=[True, True, False]
     ).reset_index(drop=True)
 
 
-ingredients_input = st.text_input(
-    "What ingredients are in your kitchen?",
-    value="chicken, rice, onion, garlic",
-    placeholder="e.g. eggs, potatoes, tomatoes, pasta",
-)
+# UI Layout
+col_input, col_cat = st.columns([3, 1.2])
+
+with col_input:
+    ingredients_input = st.text_input(
+        "What ingredients are in your kitchen?",
+        value="eggs, potatoes, onion",
+        placeholder="e.g. eggs, potatoes, tomatoes, rice, chicken",
+    )
+
+with col_cat:
+    selected_meal_type = st.selectbox(
+        "Meal Type",
+        ["Savory Meals Only", "Breakfast", "All Categories", "Desserts / Baking"],
+        index=0,
+    )
 
 if st.button("Find Recipes", type="primary"):
-    pantry_list = [
-        x.strip() for x in ingredients_input.split(",") if x.strip()
-    ]
+    pantry_list = [x.strip() for x in ingredients_input.split(",") if x.strip()]
 
     if not pantry_list:
         st.warning("Please specify at least one ingredient.")
     else:
-        with st.spinner("Analyzing ingredients and checking recipe catalogs..."):
-            meals_df = search_meals(pantry_list, limit=max_recipes)
+        with st.spinner("Searching pantry recipes across live and local culinary catalogs..."):
+            meals_df = evaluate_all_sources(pantry_list, meal_filter=selected_meal_type)
 
             if meals_df.empty:
                 st.info(
-                    "No matches found for that combination. Try common staples like chicken, beef, potato, or onion."
+                    f"No matching recipes found for '{ingredients_input}'. Try common kitchen staples like chicken, rice, eggs, pasta, or potatoes."
                 )
             else:
+                st.success(
+                    f"Evaluated and ranked {len(meals_df)} total recipes, starting from 0 missing items."
+                )
                 st.write("")
+
                 for _, meal in meals_df.iterrows():
                     with st.container(border=True):
                         col_thumb, col_details = st.columns([1, 2.5])
 
                         with col_thumb:
-                            st.image(meal["image"], use_container_width=True)
+                            if meal["image"]:
+                                st.image(meal["image"], use_container_width=True)
 
                         with col_details:
                             st.subheader(meal["title"])
-                            st.caption(
-                                f"{meal['cuisine']} cuisine · {meal['category']}"
-                            )
+                            st.caption(f"{meal['cuisine']} cuisine · {meal['category']}")
 
-                            if meal["missed_count"] == 0:
-                                st.write("**Match:** 100% (Ready to cook)")
-                            else:
-                                st.write(
-                                    f"**Match:** {meal['match_pct']}% (Missing {meal['missed_count']} items)"
-                                )
+                            col_m1, col_m2 = st.columns(2)
+                            with col_m1:
+                                if meal["missed_count"] == 0:
+                                    st.write("**Status:** 100% Match (Pantry Ready)")
+                                else:
+                                    st.write(
+                                        f"**Match:** {meal['match_pct']}% ({meal['missed_count']} missing items)"
+                                    )
+                            with col_m2:
+                                if meal["missed_count"] == 0:
+                                    st.write("**Estimated Grocery Cost:** $0.00")
+                                else:
+                                    st.write(
+                                        f"**Estimated Grocery Cost:** ~${meal['est_cost']:.2f}"
+                                    )
 
-                            used_str = (
-                                ", ".join(meal["used"])
-                                if meal["used"]
-                                else "None"
-                            )
+                            used_str = ", ".join(meal["used"]) if meal["used"] else "None"
                             st.write(f"**In your pantry:** {used_str}")
 
-                            missed_str = (
-                                ", ".join(meal["missed"])
-                                if meal["missed"]
-                                else "None"
-                            )
+                            missed_str = ", ".join(meal["missed"]) if meal["missed"] else "None"
                             st.write(f"**Missing items:** {missed_str}")
 
-                            with st.expander(
-                                "Substitution Guidance and Cooking Steps"
-                            ):
+                            with st.expander("Substitution Guidance and Instructions"):
                                 subs = get_substitute_notes(meal["missed"])
                                 for s in subs:
                                     st.write(s)
-                                st.link_button(
-                                    "Open Instructions and Video",
-                                    meal["recipe_link"],
-                                )
+                                st.link_button("Open Instructions and Video", meal["recipe_link"])
