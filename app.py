@@ -1,9 +1,9 @@
-import os
 import math
-import requests
-import pandas as pd
-import streamlit as st
+import os
 from concurrent.futures import ThreadPoolExecutor
+import pandas as pd
+import requests
+import streamlit as st
 
 st.set_page_config(page_title="The Food at Home", layout="wide")
 
@@ -12,12 +12,15 @@ if os.path.exists("logo.png"):
     with col_center:
         st.image("logo.png", width=110)
 
-col_hl, col_hm, col_hr = st.columns([1, 4, 1])
-with col_hm:
-    st.title("The Food at Home")
-    st.write(
-        "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
-    )
+lt, gt = "<", ">"
+header_html = (
+    f"{lt}h1 style='text-align: center; margin-bottom: 0.5rem; font-weight: 700;'{gt}The Food at Home{lt}/h1{gt}"
+    f"{lt}p style='text-align: center; font-size: 1.1rem; max-width: 720px; margin: 0 auto 2rem auto; line-height: 1.5;'{gt}"
+    f"Because there really is food at home. Turn what you already have in the kitchen into a meal, "
+    f"ranked by fewest missing ingredients and grocery cost.{lt}/p{gt}"
+)
+
+st.markdown(header_html, unsafe_allow_html=True)
 
 GROCERY_COST_ESTIMATES = {
     "onion": 0.75,
