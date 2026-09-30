@@ -1,22 +1,24 @@
-from concurrent.futures import ThreadPoolExecutor
-import math
 import os
 import re
-import pandas as pd
+import math
 import requests
+import pandas as pd
 import streamlit as st
+from concurrent.futures import ThreadPoolExecutor
 
 st.set_page_config(page_title="The Food at Home", layout="wide")
 
+# Centered logo display if file exists
 if os.path.exists("logo.png"):
     col_l, col_center, col_r = st.columns([2.5, 1, 2.5])
     with col_center:
         st.image("logo.png", width=110)
 
-col_title_l, col_title_m, col_title_r = st.columns([1, 4, 1])
-with col_title_m:
-    st.markdown(
-        "# :orange[The Food at Home]\n"
+# Centered Header
+_, col_head, _ = st.columns([1, 4, 1])
+with col_head:
+    st.title("The Food at Home")
+    st.write(
         "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
     )
 
@@ -99,11 +101,7 @@ def normalize_token(text):
     for t in tokens:
         if t.endswith("ies"):
             t = t[:-3] + "y"
-        elif (
-            t.endswith("es")
-            and not t.endswith("ches")
-            and not t.endswith("shes")
-        ):
+        elif t.endswith("es") and not t.endswith("ches") and not t.endswith("shes"):
             t = t[:-2]
         elif t.endswith("s") and not t.endswith("ss"):
             t = t[:-1]
@@ -167,11 +165,9 @@ def get_substitute_notes(missing_list):
                 break
 
         if found:
-            notes.append(f"**{item.title()}**: Swap with {found}.")
+            notes.append(f"{item.title()}: Swap with {found}.")
         else:
-            notes.append(
-                f"**{item.title()}**: Omit if unavailable or pick up at the store."
-            )
+            notes.append(f"{item.title()}: Omit if unavailable or pick up at the store.")
     return notes
 
 
@@ -211,11 +207,7 @@ def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
 
     candidate_meals = {}
     for ing in pantry_cleaned:
-        clean = (
-            normalize_token(ing).split()[0]
-            if normalize_token(ing)
-            else ing.lower()
-        )
+        clean = normalize_token(ing).split()[0] if normalize_token(ing) else ing.lower()
         url = f"https://www.themealdb.com/api/json/v1/1/filter.php?i={clean}"
         try:
             r = requests.get(url, timeout=5)
@@ -252,9 +244,7 @@ def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
             continue
         elif meal_filter == "Breakfast" and category.lower() != "breakfast":
             continue
-        elif (
-            meal_filter == "Desserts / Baking" and category.lower() != "dessert"
-        ):
+        elif meal_filter == "Desserts / Baking" and category.lower() != "dessert":
             continue
 
         recipe_ings = []
@@ -285,9 +275,7 @@ def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
                 "category": category,
                 "image": meal.get("strMealThumb", ""),
                 "recipe_link": link,
-                "instructions": meal.get(
-                    "strInstructions", "Instructions available on site or video."
-                ),
+                "instructions": meal.get("strInstructions", "Instructions available on site or video."),
                 "used": used,
                 "missed": missed,
                 "missed_count": len(missed),
@@ -302,7 +290,7 @@ def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
     df = pd.DataFrame(results)
     return df.sort_values(
         by=["missed_count", "est_cost", "match_pct"],
-        ascending=[True, True, False],
+        ascending=[True, True, False]
     ).reset_index(drop=True)
 
 
@@ -321,20 +309,13 @@ with col_input:
 with col_cat:
     selected_meal_type = st.selectbox(
         "Meal Type",
-        [
-            "Savory Meals Only",
-            "Breakfast",
-            "All Categories",
-            "Desserts / Baking",
-        ],
+        ["Savory Meals Only", "Breakfast", "All Categories", "Desserts / Baking"],
         index=0,
     )
 
 col_b_l, col_b_mid, col_b_r = st.columns([1.8, 1, 1.8])
 with col_b_mid:
-    find_btn = st.button(
-        "Find Recipes", type="primary", use_container_width=True
-    )
+    find_btn = st.button("Find Recipes", type="primary", use_container_width=True)
 
 if find_btn:
     pantry_list = [x.strip() for x in ingredients_input.split(",") if x.strip()]
@@ -353,10 +334,7 @@ if st.session_state.search_results is not None:
     total_count = len(results_df)
 
     if results_df.empty:
-        st.info(
-            "No matching recipes found for those ingredients. Try basic staples"
-            " like rice, chicken, or eggs."
-        )
+        st.info("No matching recipes found for those ingredients. Try basic staples like rice, chicken, or eggs.")
     else:
         total_pages = max(1, math.ceil(total_count / PAGE_SIZE))
 
@@ -371,8 +349,7 @@ if st.session_state.search_results is not None:
         page_slice = results_df.iloc[start_idx:end_idx]
 
         st.caption(
-            f"Showing {start_idx + 1} to {end_idx} of {total_count} matching"
-            f" dishes (Page {curr_page} of {total_pages})."
+            f"Showing {start_idx + 1} to {end_idx} of {total_count} matching dishes (Page {curr_page} of {total_pages})."
         )
         st.write("")
 
@@ -383,70 +360,47 @@ if st.session_state.search_results is not None:
                 with col_thumb:
                     if meal["image"]:
                         st.image(meal["image"], use_container_width=True)
-                        st.caption(
-                            "Photo serves as culinary reference and may vary"
-                            " slightly from listed prep."
-                        )
+                        st.caption("Photo serves as culinary reference and may vary slightly from listed prep.")
 
                 with col_details:
                     st.subheader(meal["title"])
-                    st.caption(
-                        f"{meal['cuisine']} cuisine · {meal['category']}"
-                    )
+                    st.caption(f"{meal['cuisine']} cuisine - {meal['category']}")
 
                     col_m1, col_m2 = st.columns(2)
                     with col_m1:
                         if meal["missed_count"] == 0:
-                            st.write("**Status:** 100% Match (Pantry Ready)")
+                            st.write("Status: 100% Match (Pantry Ready)")
                         else:
-                            st.write(
-                                f"**Match:** {meal['match_pct']}%"
-                                f" ({meal['missed_count']} missing items)"
-                            )
+                            st.write(f"Match: {meal['match_pct']}% ({meal['missed_count']} missing items)")
                     with col_m2:
                         if meal["missed_count"] == 0:
-                            st.write("**Estimated Grocery Cost:** $0.00")
+                            st.write("Estimated Grocery Cost: $0.00")
                         else:
-                            st.write(
-                                "**Estimated Grocery Cost:**"
-                                f" ~${meal['est_cost']:.2f}"
-                            )
+                            st.write(f"Estimated Grocery Cost: ~${meal['est_cost']:.2f}")
 
-                    used_str = (
-                        ", ".join(meal["used"]) if meal["used"] else "None"
-                    )
-                    st.write(f"**In your pantry:** {used_str}")
+                    used_str = ", ".join(meal["used"]) if meal["used"] else "None"
+                    st.write(f"In your pantry: {used_str}")
 
-                    missed_str = (
-                        ", ".join(meal["missed"]) if meal["missed"] else "None"
-                    )
-                    st.write(f"**Missing items:** {missed_str}")
+                    missed_str = ", ".join(meal["missed"]) if meal["missed"] else "None"
+                    st.write(f"Missing items: {missed_str}")
 
-                    with st.expander(
-                        "Substitution Guidance and Cooking Instructions"
-                    ):
+                    with st.expander("Substitution Guidance and Cooking Instructions"):
                         subs = get_substitute_notes(meal["missed"])
-                        st.write("**Substitutions:**")
+                        st.write("Substitutions:")
                         for s in subs:
-                            st.write(s)
+                            st.write(f"- {s}")
 
                         st.write("---")
-                        st.write("**Cooking Steps:**")
+                        st.write("Cooking Steps:")
                         st.write(meal["instructions"])
 
-                        st.link_button(
-                            "Watch Video Walkthrough", meal["recipe_link"]
-                        )
+                        st.link_button("Watch Video Walkthrough", meal["recipe_link"])
 
         st.write("---")
-        _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns(
-            [2, 0.6, 1.4, 0.6, 2]
-        )
+        _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns([2, 0.6, 1.4, 0.6, 2])
 
         with col_nav_left:
-            if st.button(
-                "<", disabled=(curr_page <= 1), use_container_width=True
-            ):
+            if st.button("<", disabled=(curr_page <= 1), use_container_width=True):
                 st.session_state.page_number = curr_page - 1
                 st.rerun()
 
@@ -464,8 +418,6 @@ if st.session_state.search_results is not None:
                 st.rerun()
 
         with col_nav_right:
-            if st.button(
-                ">", disabled=(curr_page >= total_pages), use_container_width=True
-            ):
+            if st.button(">", disabled=(curr_page >= total_pages), use_container_width=True):
                 st.session_state.page_number = curr_page + 1
                 st.rerun()
