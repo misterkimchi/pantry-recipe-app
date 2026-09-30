@@ -1,5 +1,4 @@
 import os
-import re
 import math
 import requests
 import pandas as pd
@@ -8,19 +7,25 @@ from concurrent.futures import ThreadPoolExecutor
 
 st.set_page_config(page_title="The Food at Home", layout="wide")
 
-# Centered logo display if file exists
 if os.path.exists("logo.png"):
     col_l, col_center, col_r = st.columns([2.5, 1, 2.5])
     with col_center:
         st.image("logo.png", width=110)
 
-# Centered Header
-_, col_head, _ = st.columns([1, 4, 1])
-with col_head:
-    st.title("The Food at Home")
-    st.write(
-        "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
-    )
+st.markdown(
+    ":teal[# The Food at Home]",
+    help=None
+)
+st.caption(
+    "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
+)
+
+st.markdown(
+    """
+    
+    """,
+    unsafe_allow_html=True
+)
 
 GROCERY_COST_ESTIMATES = {
     "onion": 0.75,
@@ -92,10 +97,15 @@ FALLBACK_SUBSTITUTIONS = {
     "eggplant": "zucchini, yellow squash, or portobello mushroom caps",
 }
 
+EXCLUSIONS = {
+    "egg": ["eggplant", "egg plant", "egg roll", "egg rolls"],
+    "pea": ["peanut", "peanuts", "peanut butter"],
+    "corn": ["cornbread", "cornstarch", "corn flour"],
+}
 
-def normalize_token(text):
-    clean = text.lower().strip()
-    clean = re.sub(r"[^\w\s]", "", clean)
+
+def normalize_words(text):
+    clean = text.lower().replace(",", " ").replace(".", " ").replace("-", " ")
     tokens = clean.split()
     normalized = []
     for t in tokens:
@@ -106,33 +116,24 @@ def normalize_token(text):
         elif t.endswith("s") and not t.endswith("ss"):
             t = t[:-1]
         normalized.append(t)
-    return " ".join(normalized)
-
-
-EXCLUSION_RULES = {
-    "egg": ["eggplant", "egg plant", "egg roll", "egg rolls"],
-    "pea": ["peanut", "peanuts", "peanut butter"],
-    "corn": ["cornbread", "cornstarch", "corn flour"],
-}
+    return normalized
 
 
 def ingredient_matches(pantry_raw, recipe_raw):
     p_lower = pantry_raw.lower().strip()
     r_lower = recipe_raw.lower().strip()
 
-    for staple, forbidden in EXCLUSION_RULES.items():
+    for staple, bad_list in EXCLUSIONS.items():
         if staple == p_lower or staple in p_lower.split():
-            if any(bad in r_lower for bad in forbidden):
-                return False
+            for bad_item in bad_list:
+                if bad_item in r_lower:
+                    return False
 
-    p_norm = normalize_token(p_lower)
-    r_norm = normalize_token(r_lower)
+    p_tokens = normalize_words(p_lower)
+    r_tokens = normalize_words(r_lower)
 
-    for p_word in p_norm.split():
-        if len(p_word) < 3:
-            continue
-        pattern = r"\b" + re.escape(p_word) + r"\b"
-        if re.search(pattern, r_norm):
+    for pt in p_tokens:
+        if len(pt) >= 3 and pt in r_tokens:
             return True
 
     return False
@@ -200,14 +201,15 @@ def match_recipe_ingredients(recipe_ingredients, pantry_items):
     return used, missed
 
 
-def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
+def evaluate_themealdb(pantry_items, meal_filter="All Categories"):
     pantry_cleaned = [p.strip() for p in pantry_items if p.strip()]
     if not pantry_cleaned:
         return pd.DataFrame()
 
     candidate_meals = {}
     for ing in pantry_cleaned:
-        clean = normalize_token(ing).split()[0] if normalize_token(ing) else ing.lower()
+        tokens = normalize_words(ing)
+        clean = tokens[0] if tokens else ing.lower()
         url = f"https://www.themealdb.com/api/json/v1/1/filter.php?i={clean}"
         try:
             r = requests.get(url, timeout=5)
@@ -258,7 +260,7 @@ def evaluate_themealdb(pantry_items, meal_filter="Savory Meals Only"):
             continue
 
         total = len(used) + len(missed)
-        pct = (len(used) / total) * 100 if total > 0 else 0
+        pct = (len(used) / total) * 100 if total != 0 else 0
         cost = estimate_missing_cost(missed)
 
         link = (
@@ -309,7 +311,7 @@ with col_input:
 with col_cat:
     selected_meal_type = st.selectbox(
         "Meal Type",
-        ["Savory Meals Only", "Breakfast", "All Categories", "Desserts / Baking"],
+        ["All Categories", "Savory Meals Only", "Breakfast", "Desserts / Baking"],
         index=0,
     )
 
@@ -397,10 +399,10 @@ if st.session_state.search_results is not None:
                         st.link_button("Watch Video Walkthrough", meal["recipe_link"])
 
         st.write("---")
-        _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns([2, 0.6, 1.4, 0.6, 2])
+        _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns([2, 0.8, 1.4, 0.8, 2])
 
         with col_nav_left:
-            if st.button("<", disabled=(curr_page <= 1), use_container_width=True):
+            if st.button("Previous", disabled=(curr_page <= 1), use_container_width=True):
                 st.session_state.page_number = curr_page - 1
                 st.rerun()
 
@@ -418,6 +420,6 @@ if st.session_state.search_results is not None:
                 st.rerun()
 
         with col_nav_right:
-            if st.button(">", disabled=(curr_page >= total_pages), use_container_width=True):
+            if st.button("Next", disabled=(curr_page >= total_pages), use_container_width=True):
                 st.session_state.page_number = curr_page + 1
                 st.rerun()
