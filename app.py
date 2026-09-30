@@ -12,20 +12,12 @@ if os.path.exists("logo.png"):
     with col_center:
         st.image("logo.png", width=110)
 
-st.markdown(
-    ":teal[# The Food at Home]",
-    help=None
-)
-st.caption(
-    "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
-)
-
-st.markdown(
-    """
-    
-    """,
-    unsafe_allow_html=True
-)
+col_hl, col_hm, col_hr = st.columns([1, 4, 1])
+with col_hm:
+    st.title("The Food at Home")
+    st.write(
+        "Because there really is food at home. Turn what you already have in the kitchen into a meal, ranked by fewest missing ingredients and grocery cost."
+    )
 
 GROCERY_COST_ESTIMATES = {
     "onion": 0.75,
@@ -133,7 +125,7 @@ def ingredient_matches(pantry_raw, recipe_raw):
     r_tokens = normalize_words(r_lower)
 
     for pt in p_tokens:
-        if len(pt) >= 3 and pt in r_tokens:
+        if len(pt) in range(3, 40) and pt in r_tokens:
             return True
 
     return False
@@ -340,12 +332,9 @@ if st.session_state.search_results is not None:
     else:
         total_pages = max(1, math.ceil(total_count / PAGE_SIZE))
 
-        if st.session_state.page_number > total_pages:
-            st.session_state.page_number = total_pages
-        if st.session_state.page_number < 1:
-            st.session_state.page_number = 1
-
+        st.session_state.page_number = max(1, min(st.session_state.page_number, total_pages))
         curr_page = st.session_state.page_number
+
         start_idx = (curr_page - 1) * PAGE_SIZE
         end_idx = min(start_idx + PAGE_SIZE, total_count)
         page_slice = results_df.iloc[start_idx:end_idx]
@@ -402,8 +391,8 @@ if st.session_state.search_results is not None:
         _, col_nav_left, col_nav_input, col_nav_right, _ = st.columns([2, 0.8, 1.4, 0.8, 2])
 
         with col_nav_left:
-            if st.button("Previous", disabled=(curr_page <= 1), use_container_width=True):
-                st.session_state.page_number = curr_page - 1
+            if st.button("Previous", disabled=(curr_page == 1), use_container_width=True):
+                st.session_state.page_number -= 1
                 st.rerun()
 
         with col_nav_input:
@@ -420,6 +409,6 @@ if st.session_state.search_results is not None:
                 st.rerun()
 
         with col_nav_right:
-            if st.button("Next", disabled=(curr_page >= total_pages), use_container_width=True):
-                st.session_state.page_number = curr_page + 1
+            if st.button("Next", disabled=(curr_page == total_pages), use_container_width=True):
+                st.session_state.page_number += 1
                 st.rerun()
